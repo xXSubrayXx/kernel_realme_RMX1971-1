@@ -32,6 +32,10 @@
 #include <generated/vdso32-offsets.h>
 #endif
 
+#ifndef vdso_offset_sigtramp
+#define vdso_offset_sigtramp	0x04e0
+#endif
+
 #define VDSO_SYMBOL(base, name)						   \
 ({									   \
 	(void *)(vdso_offset_##name - VDSO_LBASE + (unsigned long)(base)); \
