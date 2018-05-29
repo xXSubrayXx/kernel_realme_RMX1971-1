@@ -1351,6 +1351,19 @@ static struct msm_vidc_format venc_formats[] = {
 
 struct msm_vidc_format_constraint enc_pix_format_constraints[] = {
 	{
+
+		.fourcc = V4L2_PIX_FMT_SDE_Y_CBCR_H2V2_P010_VENUS,
+		.num_planes = 2,
+		.y_stride_multiples = 256,
+		.y_max_stride = 8192,
+		.y_min_plane_buffer_height_multiple = 32,
+		.y_buffer_alignment = 256,
+		.uv_stride_multiples = 256,
+		.uv_max_stride = 8192,
+		.uv_min_plane_buffer_height_multiple = 16,
+		.uv_buffer_alignment = 256,
+	},
+        {
 		.fourcc = V4L2_PIX_FMT_NV12_512,
 		.num_planes = 2,
 		.y_stride_multiples = 512,
@@ -2816,6 +2829,7 @@ static int msm_venc_set_csc(struct msm_vidc_inst *inst,
 int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 {
 	struct msm_vidc_format *fmt = NULL;
+	struct msm_vidc_format_constraint *fmt_constraint = NULL;
 	int rc = 0;
 	struct hfi_device *hdev;
 	int extra_idx = 0, i = 0;
@@ -3008,6 +3022,29 @@ int msm_venc_s_fmt(struct msm_vidc_inst *inst, struct v4l2_format *f)
 		}
 
 		msm_comm_set_color_format(inst, HAL_BUFFER_INPUT, fmt->fourcc);
+
+		fmt_constraint =
+		msm_comm_get_pixel_fmt_constraints(enc_pix_format_constraints,
+			ARRAY_SIZE(enc_pix_format_constraints),
+			f->fmt.pix_mp.pixelformat);
+
+		if (!fmt_constraint) {
+			dprintk(VIDC_ERR,
+				"Format constraint not required for %d on OUTPUT port\n",
+				f->fmt.pix_mp.pixelformat);
+		} else {
+			rc = msm_comm_set_color_format_constraints(inst,
+				HAL_BUFFER_INPUT,
+				fmt_constraint);
+			if (rc) {
+				dprintk(VIDC_ERR,
+					"Set constraint for %d failed on CAPTURE port\n",
+					f->fmt.pix_mp.pixelformat);
+				rc = -EINVAL;
+				goto exit;
+			}
+		}
+
 	} else {
 		dprintk(VIDC_ERR, "%s - Unsupported buf type: %d\n",
 			__func__, f->type);
