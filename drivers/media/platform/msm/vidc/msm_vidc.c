@@ -275,6 +275,9 @@ int msm_vidc_g_fmt(void *instance, struct v4l2_format *f)
 	case V4L2_PIX_FMT_NV12:
 		color_format = COLOR_FMT_NV12;
 		break;
+	case V4L2_PIX_FMT_NV12_512:
+		color_format = COLOR_FMT_NV12_512;
+		break;
 	case V4L2_PIX_FMT_NV12_UBWC:
 		color_format = COLOR_FMT_NV12_UBWC;
 		break;
@@ -296,6 +299,8 @@ int msm_vidc_g_fmt(void *instance, struct v4l2_format *f)
 			inst->prop.width[port]);
 	f->fmt.pix_mp.plane_fmt[0].reserved[0] = VENUS_Y_SCANLINES(color_format,
 			inst->prop.height[port]);
+	f->fmt.pix_mp.plane_fmt[0].sizeimage = VENUS_BUFFER_SIZE(color_format,
+			inst->prop.width[port], inst->prop.height[port]);
 
 exit:
 	return rc;
