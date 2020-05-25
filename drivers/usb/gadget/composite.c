@@ -570,14 +570,20 @@ static u8 encode_bMaxPower(enum usb_device_speed speed,
 {
 	unsigned int val = CONFIG_USB_GADGET_VBUS_DRAW;
 
-	switch (speed) {
-	case USB_SPEED_SUPER:
-		/* with super-speed report 900mA */
-		val = SSUSB_GADGET_VBUS_DRAW;
-		return (u8)(val / SSUSB_GADGET_VBUS_DRAW_UNITS);
-	default:
-		return DIV_ROUND_UP(val, HSUSB_GADGET_VBUS_DRAW_UNITS);
-	}
+	if (c->MaxPower)
+		val = c->MaxPower;
+	else
+		val = CONFIG_USB_GADGET_VBUS_DRAW;
+	if (!val)
+		return 0;
+	if (speed < USB_SPEED_SUPER)
+		return min(val, 500U) / 2;
+	else
+		/*
+		 * USB 3.x supports up to 900mA, but since 900 isn't divisible
+		 * by 8 the integral division will effectively cap to 896mA.
+		 */
+		return min(val, 900U) / 8;
 }
 
 static int config_buf(struct usb_configuration *config,
@@ -897,6 +903,7 @@ static int set_config(struct usb_composite_dev *cdev,
 	struct usb_configuration *c = NULL;
 	int			result = -EINVAL;
 	int			tmp;
+	unsigned		power = gadget_is_otg(gadget) ? 8 : 100;
 
 	if (number) {
 		list_for_each_entry(c, &cdev->configs, list) {
@@ -984,6 +991,12 @@ static int set_config(struct usb_composite_dev *cdev,
 		}
 	}
 
+	/* when we return, be sure our power usage is valid */
+	power = c->MaxPower ? c->MaxPower : CONFIG_USB_GADGET_VBUS_DRAW;
+	if (gadget->speed < USB_SPEED_SUPER)
+		power = min(power, 500U);
+	else
+		power = min(power, 900U);
 done:
 	usb_gadget_vbus_draw(gadget, USB_VBUS_DRAW(gadget->speed));
 	if (result >= 0 && cdev->delayed_status)
@@ -2486,6 +2499,7 @@ void composite_resume(struct usb_gadget *gadget)
 	struct usb_function		*f;
 	int				ret;
 	unsigned long			flags;
+	unsigned			maxpower;
 
 	/* REVISIT:  should we have config level
 	 * suspend/resume callbacks?
@@ -2524,7 +2538,14 @@ void composite_resume(struct usb_gadget *gadget)
 				f->resume(f);
 		}
 
-		usb_gadget_vbus_draw(gadget, USB_VBUS_DRAW(gadget->speed));
+		maxpower = cdev->config->MaxPower ?
+			cdev->config->MaxPower : CONFIG_USB_GADGET_VBUS_DRAW;
+		if (gadget->speed < USB_SPEED_SUPER)
+			maxpower = min(maxpower, 500U);
+		else
+			maxpower = min(maxpower, 900U);
+
+		usb_gadget_vbus_draw(gadget, maxpower);
 	}
 
 	spin_unlock_irqrestore(&cdev->lock, flags);
