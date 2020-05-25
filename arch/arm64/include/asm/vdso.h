@@ -28,13 +28,15 @@
 #ifndef __ASSEMBLY__
 
 #include <generated/vdso-offsets.h>
-#ifdef CONFIG_VDSO32
-#include <generated/vdso32-offsets.h>
-#endif
 
 #ifndef vdso_offset_sigtramp
 #define vdso_offset_sigtramp	0x04e0
 #endif
+
+#define vdso_offset_compat_rt_sigreturn_arm	0x0ae0
+#define vdso_offset_compat_rt_sigreturn_thumb	0x0b00
+#define vdso_offset_compat_sigreturn_arm	0x0ad0
+#define vdso_offset_compat_sigreturn_thumb	0x0af0
 
 #define VDSO_SYMBOL(base, name)						   \
 ({									   \
